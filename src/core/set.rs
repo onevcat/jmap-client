@@ -284,7 +284,7 @@ impl<O: SetObject> SetResponse<O> {
         if self
             .destroyed
             .as_ref()
-            .map_or(false, |r| r.iter().any(|i| i == id))
+            .is_some_and(|r| r.iter().any(|i| i == id))
         {
             Ok(())
         } else if let Some(error) = self.not_destroyed.as_mut().and_then(|r| r.remove(id)) {
@@ -329,15 +329,15 @@ impl<O: SetObject> SetResponse<O> {
     }
 
     pub fn has_updated(&self) -> bool {
-        self.updated.as_ref().map_or(false, |m| !m.is_empty())
+        self.updated.as_ref().is_some_and(|m| !m.is_empty())
     }
 
     pub fn has_created(&self) -> bool {
-        self.created.as_ref().map_or(false, |m| !m.is_empty())
+        self.created.as_ref().is_some_and(|m| !m.is_empty())
     }
 
     pub fn has_destroyed(&self) -> bool {
-        self.destroyed.as_ref().map_or(false, |m| !m.is_empty())
+        self.destroyed.as_ref().is_some_and(|m| !m.is_empty())
     }
 
     pub fn unwrap_update_errors(&self) -> crate::Result<()> {

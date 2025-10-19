@@ -9,7 +9,7 @@
  * except according to those terms.
  */
 
-use crate::{core::get::GetObject, Get, Set, TypeState};
+use crate::{core::get::GetObject, Get, Set, DataType};
 
 use super::{Keys, PushSubscription};
 
@@ -42,7 +42,7 @@ impl PushSubscription<Get> {
         self.expires.map(|v| v.timestamp())
     }
 
-    pub fn types(&self) -> Option<&[TypeState]> {
+    pub fn types(&self) -> Option<&[DataType]> {
         self.types.as_deref()
     }
 }

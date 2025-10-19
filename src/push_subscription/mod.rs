@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::changes::ChangesObject;
 use crate::core::set::list_not_set;
 use crate::core::Object;
-use crate::{Get, Set, TypeState};
+use crate::{Get, Set, DataType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PushSubscription<State = Get> {
@@ -57,7 +57,7 @@ pub struct PushSubscription<State = Get> {
 
     #[serde(rename = "types")]
     #[serde(skip_serializing_if = "list_not_set")]
-    types: Option<Vec<TypeState>>,
+    types: Option<Vec<DataType>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]

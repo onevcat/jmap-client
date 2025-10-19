@@ -32,8 +32,7 @@ use crate::{
         request::{Arguments, Request},
         response::{Response, TaggedMethodResponse},
     },
-    event_source::Changes,
-    Method, StateChangeType, TypeState, URI,
+    DataType, Method, PushObject, URI,
 };
 
 #[derive(Debug, Serialize)]
@@ -83,7 +82,7 @@ struct WebSocketPushEnable {
     _type: WebSocketPushEnableType,
 
     #[serde(rename = "dataTypes")]
-    data_types: Option<Vec<StateChangeType>>,
+    data_types: Option<Vec<DataType>>,
 
     #[serde(rename = "pushState")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -111,20 +110,14 @@ enum WebSocketPushDisableType {
     WebSocketPushDisable,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum WebSocketStateChangeType {
-    StateChange,
-}
-
 #[derive(Deserialize, Debug)]
-pub struct WebSocketStateChange {
-    #[serde(rename = "@type")]
-    pub type_: WebSocketStateChangeType,
-
-    pub changed: AHashMap<String, AHashMap<TypeState, String>>,
+pub struct WebSocketPushObject {
+    #[serde(flatten)]
+    pub push: PushObject,
 
     #[serde(rename = "pushState")]
-    push_state: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub push_state: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,14 +145,14 @@ pub enum WebSocketErrorType {
 #[serde(untagged)]
 enum WebSocketMessage_ {
     Response(WebSocketResponse),
-    StateChange(WebSocketStateChange),
+    PushNotification(WebSocketPushObject),
     Error(WebSocketError),
 }
 
 #[derive(Debug)]
 pub enum WebSocketMessage {
     Response(Response<TaggedMethodResponse>),
-    StateChange(Changes),
+    PushNotification(PushObject),
 }
 
 pub struct WsStream {
@@ -274,11 +267,8 @@ impl Client {
                                         response.request_id,
                                     )))
                                 }
-                                WebSocketMessage_::StateChange(changes) => {
-                                    yield Ok(WebSocketMessage::StateChange(Changes::new(
-                                        changes.push_state,
-                                        changes.changed,
-                                    )))
+                                WebSocketMessage_::PushNotification(push) => {
+                                    yield Ok(WebSocketMessage::PushNotification(push.push))
                                 }
                                 WebSocketMessage_::Error(err) => yield Err(ProblemDetails::from(err).into()),
                             },
@@ -320,7 +310,7 @@ impl Client {
 
     pub async fn enable_push_ws(
         &self,
-        data_types: Option<impl IntoIterator<Item = StateChangeType>>,
+        data_types: Option<impl IntoIterator<Item = DataType>>,
         push_state: Option<impl Into<String>>,
     ) -> crate::Result<()> {
         self.ws

@@ -12,7 +12,7 @@
 use crate::{
     core::set::{from_timestamp, SetObject},
     email_submission::SetArguments,
-    Get, Set, TypeState,
+    Get, Set, DataType,
 };
 
 use super::{Keys, PushSubscription};
@@ -43,7 +43,7 @@ impl PushSubscription<Set> {
         self
     }
 
-    pub fn types(&mut self, types: Option<impl IntoIterator<Item = TypeState>>) -> &mut Self {
+    pub fn types(&mut self, types: Option<impl IntoIterator<Item = DataType>>) -> &mut Self {
         self.types = types.map(|s| s.into_iter().collect());
         self
     }

@@ -16,7 +16,7 @@
 #[cfg(feature = "async")]
 use futures_util::StreamExt;
 #[cfg(feature = "async")]
-use jmap_client::{client::Client, TypeState};
+use jmap_client::{client::Client, DataType};
 
 #[cfg(feature = "async")]
 async fn event_source() {
@@ -31,11 +31,11 @@ async fn event_source() {
     let mut stream = client
         .event_source(
             [
-                TypeState::Email,
-                TypeState::EmailDelivery,
-                TypeState::Mailbox,
-                TypeState::EmailSubmission,
-                TypeState::Identity,
+                DataType::Email,
+                DataType::EmailDelivery,
+                DataType::Mailbox,
+                DataType::EmailSubmission,
+                DataType::Identity,
             ]
             .into(),
             false,
@@ -47,14 +47,25 @@ async fn event_source() {
 
     // Consume events
     while let Some(event) = stream.next().await {
-        let changes = event.unwrap();
-        println!("-> Change id: {:?}", changes.id());
-        for account_id in changes.changed_accounts() {
-            println!(" Account {} has changes:", account_id);
-            if let Some(account_changes) = changes.changes(account_id) {
-                for (type_state, state_id) in account_changes {
-                    println!("   Type {:?} has a new state {}.", type_state, state_id);
+        use jmap_client::event_source::PushNotification;
+
+        match event.unwrap() {
+            PushNotification::StateChange(changes) => {
+                println!("-> Change id: {:?}", changes.id());
+                for account_id in changes.changed_accounts() {
+                    println!(" Account {} has changes:", account_id);
+                    if let Some(account_changes) = changes.changes(account_id) {
+                        for (type_state, state_id) in account_changes {
+                            println!("   Type {:?} has a new state {}.", type_state, state_id);
+                        }
+                    }
                 }
+            }
+            PushNotification::CalendarAlert(calendar_alert) => {
+                println!(
+                    "-> Calendar alert received for event {} (alert id {}).",
+                    calendar_alert.calendar_event_id, calendar_alert.alert_id
+                );
             }
         }
     }

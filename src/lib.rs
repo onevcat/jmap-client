@@ -121,11 +121,11 @@
 //!     let mut stream = client
 //!         .event_source(
 //!             [
-//!                 TypeState::Email,
-//!                 TypeState::EmailDelivery,
-//!                 TypeState::Mailbox,
-//!                 TypeState::EmailSubmission,
-//!                 TypeState::Identity,
+//!                 DataType::Email,
+//!                 DataType::EmailDelivery,
+//!                 DataType::Mailbox,
+//!                 DataType::EmailSubmission,
+//!                 DataType::Identity,
 //!             ]
 //!             .into(),
 //!             false,
@@ -332,25 +332,83 @@ pub enum Method {
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
-pub enum TypeState {
-    Mailbox,
-    Thread,
-    Email,
-    EmailDelivery,
-    Identity,
-    EmailSubmission,
+pub enum DataType {
+    #[serde(rename = "Email")]
+    Email = 0,
+    #[serde(rename = "EmailDelivery")]
+    EmailDelivery = 1,
+    #[serde(rename = "EmailSubmission")]
+    EmailSubmission = 2,
+    #[serde(rename = "Mailbox")]
+    Mailbox = 3,
+    #[serde(rename = "Thread")]
+    Thread = 4,
+    #[serde(rename = "Identity")]
+    Identity = 5,
+    #[serde(rename = "Core")]
+    Core = 6,
+    #[serde(rename = "PushSubscription")]
+    PushSubscription = 7,
+    #[serde(rename = "SearchSnippet")]
+    SearchSnippet = 8,
+    #[serde(rename = "VacationResponse")]
+    VacationResponse = 9,
+    #[serde(rename = "MDN")]
+    Mdn = 10,
+    #[serde(rename = "Quota")]
+    Quota = 11,
+    #[serde(rename = "SieveScript")]
+    SieveScript = 12,
+    #[serde(rename = "Calendar")]
+    Calendar = 13,
+    #[serde(rename = "CalendarEvent")]
+    CalendarEvent = 14,
+    #[serde(rename = "CalendarEventNotification")]
+    CalendarEventNotification = 15,
+    #[serde(rename = "AddressBook")]
+    AddressBook = 16,
+    #[serde(rename = "ContactCard")]
+    ContactCard = 17,
+    #[serde(rename = "FileNode")]
+    FileNode = 18,
+    #[serde(rename = "Principal")]
+    Principal = 19,
+    #[serde(rename = "ShareNotification")]
+    ShareNotification = 20,
+    #[serde(rename = "ParticipantIdentity")]
+    ParticipantIdentity = 21,
+    #[serde(rename = "CalendarAlert")]
+    CalendarAlert = 22,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum StateChangeType {
-    StateChange,
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "@type")]
+pub enum PushObject {
+    StateChange {
+        changed: AHashMap<String, AHashMap<DataType, String>>,
+    },
+    EmailPush {
+        #[serde(rename = "accountId")]
+        account_id: String,
+        email: serde_json::Value,
+    },
+    CalendarAlert(CalendarAlert),
+    Group {
+        entries: Vec<PushObject>,
+    },
 }
 
-#[derive(Debug, Deserialize)]
-pub struct StateChange {
-    #[serde(rename = "@type")]
-    pub type_: StateChangeType,
-    pub changed: AHashMap<String, AHashMap<TypeState, String>>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CalendarAlert {
+    #[serde(rename = "accountId")]
+    pub account_id: String,
+    #[serde(rename = "calendarEventId")]
+    pub calendar_event_id: String,
+    pub uid: String,
+    #[serde(rename = "recurrenceId")]
+    pub recurrence_id: Option<String>,
+    #[serde(rename = "alertId")]
+    pub alert_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -434,15 +492,32 @@ impl Display for Error {
     }
 }
 
-impl Display for TypeState {
+impl Display for DataType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeState::Mailbox => write!(f, "Mailbox"),
-            TypeState::Thread => write!(f, "Thread"),
-            TypeState::Email => write!(f, "Email"),
-            TypeState::EmailDelivery => write!(f, "EmailDelivery"),
-            TypeState::Identity => write!(f, "Identity"),
-            TypeState::EmailSubmission => write!(f, "EmailSubmission"),
+            DataType::Mailbox => write!(f, "Mailbox"),
+            DataType::Thread => write!(f, "Thread"),
+            DataType::Email => write!(f, "Email"),
+            DataType::EmailDelivery => write!(f, "EmailDelivery"),
+            DataType::Identity => write!(f, "Identity"),
+            DataType::EmailSubmission => write!(f, "EmailSubmission"),
+            DataType::CalendarAlert => write!(f, "CalendarAlert"),
+            DataType::Core => write!(f, "Core"),
+            DataType::PushSubscription => write!(f, "PushSubscription"),
+            DataType::SearchSnippet => write!(f, "SearchSnippet"),
+            DataType::VacationResponse => write!(f, "VacationResponse"),
+            DataType::Mdn => write!(f, "MDN"),
+            DataType::Quota => write!(f, "Quota"),
+            DataType::SieveScript => write!(f, "SieveScript"),
+            DataType::Calendar => write!(f, "Calendar"),
+            DataType::CalendarEvent => write!(f, "CalendarEvent"),
+            DataType::CalendarEventNotification => write!(f, "CalendarEventNotification"),
+            DataType::AddressBook => write!(f, "AddressBook"),
+            DataType::ContactCard => write!(f, "ContactCard"),
+            DataType::FileNode => write!(f, "FileNode"),
+            DataType::Principal => write!(f, "Principal"),
+            DataType::ShareNotification => write!(f, "ShareNotification"),
+            DataType::ParticipantIdentity => write!(f, "ParticipantIdentity"),
         }
     }
 }

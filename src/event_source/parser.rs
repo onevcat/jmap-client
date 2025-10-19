@@ -9,9 +9,11 @@
  * except according to those terms.
  */
 
-use crate::StateChange;
-
 use super::Changes;
+use crate::{
+    event_source::{CalendarAlert, PushNotification},
+    PushObject,
+};
 
 const MAX_EVENT_SIZE: usize = 1024 * 1024;
 
@@ -19,6 +21,7 @@ const MAX_EVENT_SIZE: usize = 1024 * 1024;
 pub enum EventType {
     Ping,
     State,
+    CalendarAlert,
 }
 
 impl Default for EventType {
@@ -67,7 +70,7 @@ impl EventParser {
         self.bytes.is_none()
     }
 
-    pub fn filter_state(&mut self) -> Option<crate::Result<Changes>> {
+    pub fn filter_notification(&mut self) -> Option<crate::Result<PushNotification>> {
         #[allow(clippy::never_loop)]
         #[allow(clippy::while_let_on_iterator)]
         while let Some(event) = self.next() {
@@ -78,15 +81,33 @@ impl EventParser {
                     id,
                     ..
                 }) => {
-                    return match serde_json::from_slice::<StateChange>(&data) {
-                        Ok(state_change) => Some(Ok(Changes {
-                            id: if !id.is_empty() {
-                                Some(String::from_utf8(id).unwrap_or_default())
-                            } else {
-                                None
-                            },
-                            changes: state_change.changed,
-                        })),
+                    return match serde_json::from_slice::<PushObject>(&data) {
+                        Ok(PushObject::StateChange { changed }) => {
+                            Some(Ok(PushNotification::StateChange(Changes {
+                                id: if !id.is_empty() {
+                                    Some(String::from_utf8(id).unwrap_or_default())
+                                } else {
+                                    None
+                                },
+                                changes: changed,
+                            })))
+                        }
+                        Ok(unexpected) => Some(Err(crate::Error::Internal(format!(
+                            "Unexpected PushObject variant: {:?}",
+                            unexpected
+                        )))),
+                        Err(err) => Some(Err(err.into())),
+                    };
+                }
+                Ok(Event {
+                    event: EventType::CalendarAlert,
+                    data,
+                    ..
+                }) => {
+                    return match serde_json::from_slice::<CalendarAlert>(&data) {
+                        Ok(calendar_alert) => {
+                            Some(Ok(PushNotification::CalendarAlert(calendar_alert)))
+                        }
                         Err(err) => Some(Err(err.into())),
                     };
                 }
@@ -97,7 +118,7 @@ impl EventParser {
                     ..
                 }) => {
                     #[cfg(feature = "debug")]
-                    return Some(Ok(Changes {
+                    return Some(Ok(PushNotification::StateChange(Changes {
                         id: if !id.is_empty() {
                             Some(String::from_utf8(id).unwrap_or_default())
                         } else {
@@ -107,7 +128,7 @@ impl EventParser {
                             "ping".to_string(),
                             ahash::AHashMap::new(),
                         )]),
-                    }));
+                    })));
                 }
                 Err(err) => return Some(Err(err)),
             }
@@ -175,13 +196,17 @@ impl Iterator for EventParser {
                             b"data" => {
                                 self.result.data.extend_from_slice(&self.value);
                             }
-                            b"event" => {
-                                if self.value == b"ping" {
+                            b"event" => match &self.value[..] {
+                                b"calendarAlert" => {
+                                    self.result.event = EventType::CalendarAlert;
+                                }
+                                b"ping" => {
                                     self.result.event = EventType::Ping;
-                                } else {
+                                }
+                                _ => {
                                     self.result.event = EventType::State;
                                 }
-                            }
+                            },
                             _ => {
                                 //ignore
                             }

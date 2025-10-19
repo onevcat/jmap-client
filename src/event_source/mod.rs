@@ -12,7 +12,7 @@
 pub mod parser;
 pub mod stream;
 
-use crate::{core::session::URLParser, TypeState};
+use crate::{core::session::URLParser, CalendarAlert, DataType};
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -33,14 +33,20 @@ impl URLParser for URLParameter {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PushNotification {
+    StateChange(Changes),
+    CalendarAlert(CalendarAlert),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Changes {
     id: Option<String>,
-    changes: AHashMap<String, AHashMap<TypeState, String>>,
+    changes: AHashMap<String, AHashMap<DataType, String>>,
 }
 
 impl Changes {
-    pub fn new(id: Option<String>, changes: AHashMap<String, AHashMap<TypeState, String>>) -> Self {
+    pub fn new(id: Option<String>, changes: AHashMap<String, AHashMap<DataType, String>>) -> Self {
         Self { id, changes }
     }
 
@@ -48,7 +54,7 @@ impl Changes {
         self.id.as_deref()
     }
 
-    pub fn account_changes(&mut self, account_id: &str) -> Option<AHashMap<TypeState, String>> {
+    pub fn account_changes(&mut self, account_id: &str) -> Option<AHashMap<DataType, String>> {
         self.changes.remove(account_id)
     }
 
@@ -56,17 +62,17 @@ impl Changes {
         self.changes.keys()
     }
 
-    pub fn changes(&self, account_id: &str) -> Option<impl Iterator<Item = (&TypeState, &String)>> {
+    pub fn changes(&self, account_id: &str) -> Option<impl Iterator<Item = (&DataType, &String)>> {
         self.changes.get(account_id).map(|changes| changes.iter())
     }
 
-    pub fn has_type(&self, type_: TypeState) -> bool {
+    pub fn has_type(&self, type_: DataType) -> bool {
         self.changes
             .values()
             .any(|changes| changes.contains_key(&type_))
     }
 
-    pub fn into_inner(self) -> AHashMap<String, AHashMap<TypeState, String>> {
+    pub fn into_inner(self) -> AHashMap<String, AHashMap<DataType, String>> {
         self.changes
     }
 

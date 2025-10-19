@@ -9,20 +9,23 @@
  * except according to those terms.
  */
 
-use crate::{client::Client, core::session::URLPart, event_source::parser::EventParser, TypeState};
+use crate::{
+    client::Client,
+    core::session::URLPart,
+    event_source::{parser::EventParser, PushNotification},
+    DataType,
+};
 use futures_util::{Stream, StreamExt};
 use reqwest::header::{HeaderValue, ACCEPT, CONTENT_TYPE};
-
-use super::Changes;
 
 impl Client {
     pub async fn event_source(
         &self,
-        mut types: Option<impl IntoIterator<Item = TypeState>>,
+        mut types: Option<impl IntoIterator<Item = DataType>>,
         close_after_state: bool,
         ping: Option<u32>,
         last_event_id: Option<&str>,
-    ) -> crate::Result<impl Stream<Item = crate::Result<Changes>> + Unpin> {
+    ) -> crate::Result<impl Stream<Item = crate::Result<PushNotification>> + Unpin> {
         let mut event_source_url = String::with_capacity(self.session().event_source_url().len());
 
         for part in self.event_source_url() {
@@ -86,8 +89,8 @@ impl Client {
 
         Ok(Box::pin(async_stream::stream! {
             loop {
-                if let Some(changes) = parser.filter_state() {
-                    yield changes;
+                if let Some(notification) = parser.filter_notification() {
+                    yield notification;
                     continue;
                 }
                 if let Some(result) = stream.next().await {

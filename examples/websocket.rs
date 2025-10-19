@@ -24,6 +24,9 @@ use tokio::sync::mpsc;
 #[cfg(feature = "websockets")]
 async fn websocket() {
     // Connect to the JMAP server using Basic authentication
+
+    use jmap_client::PushObject;
+
     let client = Client::new()
         .credentials(("john@example.org", "secret"))
         .connect("https://jmap.example.org")
@@ -78,8 +81,10 @@ async fn websocket() {
         .mailbox_update_sort_order(&mailbox_id, 1)
         .await
         .unwrap();
-    if let Some(WebSocketMessage::StateChange(changes)) = stream_rx.recv().await {
-        println!("Received changes: {:?}", changes);
+    if let Some(WebSocketMessage::PushNotification(PushObject::StateChange { changed })) =
+        stream_rx.recv().await
+    {
+        println!("Received changes: {:?}", changed);
     } else {
         unreachable!()
     }

@@ -1,3 +1,7 @@
+jmap-client 0.4.0
+================================
+- Calendar Alerts support.
+
 jmap-client 0.3.3
 ================================
 - JMAP for Sharing support.
