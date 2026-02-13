@@ -21,6 +21,7 @@ use crate::{
     Get, Set,
 };
 use ahash::AHashMap;
+use serde_json::Value;
 
 impl Email<Set> {
     pub fn mailbox_ids<T, U>(&mut self, mailbox_ids: T) -> &mut Self
@@ -43,7 +44,10 @@ impl Email<Set> {
         self.mailbox_ids = None;
         self.patch
             .get_or_insert_with(AHashMap::new)
-            .insert(format!("mailboxIds/{}", mailbox_id), set);
+            .insert(
+                format!("mailboxIds/{}", mailbox_id),
+                if set { Value::Bool(true) } else { Value::Null },
+            );
         self
     }
 
@@ -60,7 +64,10 @@ impl Email<Set> {
         self.keywords = None;
         self.patch
             .get_or_insert_with(AHashMap::new)
-            .insert(format!("keywords/{}", keyword), set);
+            .insert(
+                format!("keywords/{}", keyword),
+                if set { Value::Bool(true) } else { Value::Null },
+            );
         self
     }
 
@@ -450,5 +457,26 @@ impl EmailHeader {
             name,
             value,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mailbox_id_false_serializes_as_null_patch() {
+        let mut e = <Email<Set> as SetObject>::new(None);
+        e.mailbox_id("mb_inbox", false);
+        let v = serde_json::to_value(&e).expect("json");
+        assert_eq!(v.get("mailboxIds/mb_inbox"), Some(&Value::Null));
+    }
+
+    #[test]
+    fn keyword_false_serializes_as_null_patch() {
+        let mut e = <Email<Set> as SetObject>::new(None);
+        e.keyword("$seen", false);
+        let v = serde_json::to_value(&e).expect("json");
+        assert_eq!(v.get("keywords/$seen"), Some(&Value::Null));
     }
 }
